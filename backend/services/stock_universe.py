@@ -104,13 +104,15 @@ def search_stocks(query: str, limit: int = 20) -> list[dict]:
         entry = universe.get(query)
         return [{"code": query, "name": entry["name"], "market": entry["market"]}] if entry else []
 
+    query_casefold = query.casefold()
     starts, contains = [], []
     for code, entry in universe.items():
         name = entry["name"]
-        if query not in name:
+        name_casefold = name.casefold()
+        if query_casefold not in name_casefold:
             continue
         result = {"code": code, "name": name, "market": entry["market"]}
-        (starts if name.startswith(query) else contains).append(result)
+        (starts if name_casefold.startswith(query_casefold) else contains).append(result)
 
     starts.sort(key=lambda x: x["name"])
     contains.sort(key=lambda x: x["name"])
@@ -119,8 +121,9 @@ def search_stocks(query: str, limit: int = 20) -> list[dict]:
 
 def find_stock_by_name(name: str) -> dict | None:
     universe = get_stock_universe()
+    name_casefold = name.casefold()
     for code, entry in universe.items():
-        if entry["name"] == name:
+        if entry["name"].casefold() == name_casefold:
             return {"code": code, "name": entry["name"], "market": entry["market"]}
     return None
 

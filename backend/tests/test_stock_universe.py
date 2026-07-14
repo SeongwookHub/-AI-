@@ -34,6 +34,15 @@ def test_search_contains_match_ranked_after_startswith_match():
     assert names.index("삼성전자") < names.index("한화삼성전자유사종목")
 
 
+def test_search_is_case_insensitive_for_english_names():
+    with patch.object(stock_universe, "get_stock_universe", return_value=FAKE_UNIVERSE):
+        lower = stock_universe.search_stocks("sk")
+        upper = stock_universe.search_stocks("SK")
+        mixed = stock_universe.search_stocks("Sk")
+    assert [r["name"] for r in lower] == ["SK하이닉스"]
+    assert lower == upper == mixed
+
+
 def test_search_by_exact_6_digit_code():
     with patch.object(stock_universe, "get_stock_universe", return_value=FAKE_UNIVERSE):
         results = stock_universe.search_stocks("005930")
@@ -58,6 +67,11 @@ def test_find_stock_by_name_exact_match_only():
             "market": "KOSPI",
         }
         assert stock_universe.find_stock_by_name("삼성") is None  # 부분일치는 등록 검증에서 불허
+        assert stock_universe.find_stock_by_name("sk하이닉스") == {
+            "code": "000660",
+            "name": "SK하이닉스",
+            "market": "KOSPI",
+        }
 
 
 def test_find_stock_by_code():
