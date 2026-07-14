@@ -300,6 +300,25 @@ button:active { background: var(--primary-pressed); }
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.time-title::-webkit-details-marker {
+  display: none;
+}
+
+.time-title::before {
+  content: "▸";
+  display: inline-block;
+  font-size: 14px;
+  color: var(--mute);
+  transition: transform 0.15s;
+}
+
+.time-block[open] > .time-title::before {
+  transform: rotate(90deg);
 }
 
 .time-title .count {
@@ -394,8 +413,8 @@ button:active { background: var(--primary-pressed); }
 
 .stock-chart-link {
   display: block;
-  flex: 0 1 300px;
-  min-width: 220px;
+  flex: 1 1 320px;
+  min-width: 240px;
   border-radius: var(--radius-md);
   overflow: hidden;
   line-height: 0;
@@ -419,12 +438,14 @@ button:active { background: var(--primary-pressed); }
   display: flex;
   flex-direction: column;
   gap: 14px;
-  flex: 0 1 220px;
+  flex: 1 1 200px;
   min-width: 200px;
+  padding-left: 4px;
 }
 
 .stock-panel-right {
-  flex: 1 1 220px;
+  flex: 1 1 240px;
+  max-width: 260px;
   min-width: 220px;
   padding-left: 20px;
   border-left: 1px solid var(--hairline);
@@ -560,6 +581,9 @@ button:active { background: var(--primary-pressed); }
   color: var(--ink);
   font-weight: 600;
   font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .report-meta {

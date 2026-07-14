@@ -31,14 +31,14 @@ def _to_iso_date(pub_date: str) -> str:
         return pub_date
 
 
-def fetch_raw(keyword: str, display: int = 100) -> dict:
+def fetch_raw(keyword: str, display: int = 100, start: int = 1) -> dict:
     """네이버 뉴스 검색 API 원시 응답(JSON)을 반환한다. 실패 시 재시도 후 NaverApiError."""
     require_naver_credentials()
     headers = {
         "X-Naver-Client-Id": NAVER_CLIENT_ID,
         "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
     }
-    params = {"query": keyword, "display": display, "sort": "date"}
+    params = {"query": keyword, "display": display, "sort": "date", "start": start}
 
     last_error: Exception | None = None
     for attempt in range(NAVER_MAX_RETRIES + 1):
@@ -53,6 +53,24 @@ def fetch_raw(keyword: str, display: int = 100) -> dict:
             if attempt < NAVER_MAX_RETRIES:
                 time.sleep(NAVER_REQUEST_DELAY_SEC * (attempt + 1))
     raise NaverApiError(f"'{keyword}' 뉴스 수집 실패: {last_error}")
+
+
+def fetch_raw_pages(keyword: str, pages: int = 3, display: int = 100) -> list[dict]:
+    """여러 페이지(start=1,101,201...)를 순차 호출해 원시 응답 목록을 반환한다.
+
+    인기 종목은 최신 100건이 전부 1시간 이내에 몰릴 정도로 뉴스량이 많아, 한 페이지만
+    가져오면 '오늘'/'어제 이전' 구간이 항상 비어 보인다. 조금 더 과거까지 확보하기 위해
+    기본 3페이지(최대 300건)를 순차 호출한다. 네이버 검색 API의 start 상한(1000)을 넘지 않는다.
+    """
+    raw_payloads = []
+    for page in range(pages):
+        start = page * display + 1
+        if start > 1000:
+            break
+        if page > 0:
+            time.sleep(NAVER_REQUEST_DELAY_SEC)
+        raw_payloads.append(fetch_raw(keyword, display=display, start=start))
+    return raw_payloads
 
 
 def normalize_items(raw_payload: dict) -> list[dict]:

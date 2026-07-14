@@ -294,10 +294,11 @@ function renderArticles(articles) {
 
   const buckets = groupArticlesByRecency(articles);
   for (const [label, bucketArticles] of buckets) {
-    const timeSection = document.createElement("section");
+    const timeSection = document.createElement("details");
     timeSection.className = "time-block";
+    timeSection.open = true;
 
-    const timeTitle = document.createElement("h2");
+    const timeTitle = document.createElement("summary");
     timeTitle.className = "time-title";
     timeTitle.innerHTML = `${label} <span class="count">${bucketArticles.length}건</span>`;
     timeSection.appendChild(timeTitle);

@@ -4,16 +4,16 @@ from datetime import datetime, timezone
 from backend.config import RAW_DIR
 from backend.services import pipeline_state, storage
 from backend.services.matcher import match_keywords
-from backend.services.naver_client import NaverApiError, fetch_raw, normalize_items
+from backend.services.naver_client import NaverApiError, fetch_raw_pages, normalize_items
 from backend.services.press_registry import filter_allowed_articles, get_allowed_domains, is_allowed_link
 from backend.services.validators import dedup_by_link, validate_article_schema
 
 
-def _save_raw(keyword: str, raw_payload: dict) -> None:
+def _save_raw(keyword: str, raw_payload: dict, page: int = 0) -> None:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
     safe_keyword = "".join(c if c.isalnum() else "_" for c in keyword)
-    path = RAW_DIR / f"{safe_keyword}_{timestamp}.json"
+    path = RAW_DIR / f"{safe_keyword}_p{page}_{timestamp}.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(raw_payload, f, ensure_ascii=False, indent=2)
 
@@ -43,14 +43,16 @@ def sync_all_keywords() -> dict:
     for row in keyword_rows:
         keyword = row["keyword"]
         try:
-            raw_payload = fetch_raw(keyword)
+            raw_pages = fetch_raw_pages(keyword)
         except NaverApiError:
             failed_keywords.append(keyword)
             continue
 
         fetched_ok = True
-        _save_raw(keyword, raw_payload)
-        items = normalize_items(raw_payload)
+        items = []
+        for page, raw_payload in enumerate(raw_pages):
+            _save_raw(keyword, raw_payload, page)
+            items.extend(normalize_items(raw_payload))
 
         items, excluded_by_outlet = filter_allowed_articles(items)
         total_excluded_by_outlet += len(excluded_by_outlet)
