@@ -323,6 +323,73 @@ function renderArticles(articles) {
   }
 }
 
+const RECENT_SEARCHES_KEY = "kstockhub.recentSearches";
+const MAX_RECENT_SEARCHES = 8;
+
+function loadRecentSearches() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRecentSearch(term) {
+  term = term.trim();
+  if (!term) return;
+  const list = [term, ...loadRecentSearches().filter((t) => t !== term)].slice(0, MAX_RECENT_SEARCHES);
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list));
+  renderRecentSearches();
+}
+
+function removeRecentSearch(term) {
+  const list = loadRecentSearches().filter((t) => t !== term);
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list));
+  renderRecentSearches();
+}
+
+function renderRecentSearches() {
+  const container = document.getElementById("recent-searches");
+  if (!container) return;
+  const list = loadRecentSearches();
+  container.innerHTML = "";
+  if (list.length === 0) return;
+
+  const label = document.createElement("span");
+  label.className = "recent-label";
+  label.textContent = "최근 검색어";
+  container.appendChild(label);
+
+  for (const term of list) {
+    const chip = document.createElement("span");
+    chip.className = "recent-chip";
+
+    const textBtn = document.createElement("button");
+    textBtn.type = "button";
+    textBtn.className = "recent-chip-text";
+    textBtn.textContent = term;
+    textBtn.onclick = () => {
+      document.getElementById("new-keyword-input").value = term;
+      searchStockSuggestions(term);
+    };
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "recent-chip-remove";
+    removeBtn.setAttribute("aria-label", `${term} 검색 이력 삭제`);
+    removeBtn.textContent = "×";
+    removeBtn.onclick = (event) => {
+      event.stopPropagation();
+      removeRecentSearch(term);
+    };
+
+    chip.appendChild(textBtn);
+    chip.appendChild(removeBtn);
+    container.appendChild(chip);
+  }
+}
+
 async function searchStockSuggestions(query) {
   const list = document.getElementById("stock-suggestions");
   if (!query.trim()) {
@@ -455,7 +522,9 @@ function escapeHtml(str) {
 }
 
 document.getElementById("search-button").addEventListener("click", () => {
-  searchStockSuggestions(document.getElementById("new-keyword-input").value);
+  const value = document.getElementById("new-keyword-input").value;
+  searchStockSuggestions(value);
+  saveRecentSearch(value);
 });
 document.getElementById("sync-button").addEventListener("click", triggerSync);
 document.getElementById("login-form").addEventListener("submit", submitLogin);
@@ -464,6 +533,7 @@ document.getElementById("new-keyword-input").addEventListener("keydown", (event)
   if (event.key === "Enter") {
     event.preventDefault();
     searchStockSuggestions(event.target.value);
+    saveRecentSearch(event.target.value);
   }
 });
 
@@ -474,4 +544,5 @@ document.addEventListener("click", (event) => {
   }
 });
 
+renderRecentSearches();
 checkAuthAndInit();
