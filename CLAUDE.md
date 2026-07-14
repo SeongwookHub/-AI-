@@ -77,26 +77,40 @@ output/
 - `meta`: `key, value` (예: `last_sync_at`)
 - 상세 CRUD는 `backend/services/storage.py` 참고.
 
-## 주식 종목 차트/시세 (키워드가 종목명일 때)
-키워드 추가 시 그 문자열이 네이버 증권에 등록된 종목명과 정확히 일치하면, 종목코드를 함께 저장해
-대시보드에 실시간 차트·시세를 보여준다. 공식 문서화된 API가 아니라 네이버 자체 프런트엔드가 쓰는
-내부 엔드포인트를 그대로 이용하는 것이라 URL이 언제든 바뀔 수 있다.
-- `backend/services/stock_lookup.py`
-  - `resolve_stock_code(query)` — `ac.stock.naver.com/ac` 자동완성 API로 조회, `category=="stock"`이고
-    이름이 **완전히 일치**하는 항목만 채택한다 (ETF 등 이름에 종목명이 포함되기만 한 상품과 혼동 방지).
+## 주식 종목 전용 키워드 (종목명/종목코드만 등록 가능)
+이 대시보드는 임의의 뉴스 키워드가 아니라 **코스피/코스닥 상장 종목만** 등록할 수 있다
+(사용자 요청으로 범위를 좁힘). 공식 문서화된 API가 아니라 네이버 자체 프런트엔드가 쓰는 내부
+엔드포인트를 그대로 이용하는 것이라 URL이 언제든 바뀔 수 있다.
+
+- `backend/services/stock_universe.py` — 상장 종목 전체 목록(진짜 개별 종목만, ETF/ETN 제외)을
+  관리하는 단일 소스.
+  - `build_stock_universe()` — `finance.naver.com/sise/sise_market_sum.naver`(코스피 `sosok=0`,
+    코스닥 `sosok=1`)를 빈 페이지가 나올 때까지 순회해 전체 종목을 모으고, `etfItemList.naver` /
+    `etnItemList.naver`(네이버가 제공하는 전체 ETF/ETN 목록 JSON)에 있는 코드는 제외한다.
+    실제 확인: 필터링 전 3,942개 → 필터링 후 2,691개, 남은 목록에 ETF/ETN 이름이 전혀 없음을 확인.
+  - `get_stock_universe()` — `output/stock_universe.json`에 24시간 캐시. 앱 실행 중 첫 검색 요청 때만
+    ~10초 걸려 새로 수집하고, 이후로는 캐시를 즉시 반환한다.
+  - `search_stocks(query)` — 종목명 부분일치를 **이름이 검색어로 시작하는 것 우선, 중간에 포함되는
+    것은 후순위**로 정렬해 반환한다. 검색어가 6자리 숫자면 종목코드 완전일치로 조회한다.
+  - `find_stock_by_name(name)` / `find_stock_by_code(code)` — 키워드 등록 시 **완전 일치** 검증용
+    (자동완성에서 고른 값이거나 정확한 6자리 코드가 아니면 등록 거부).
+- `backend/routes/stocks.py` — `GET /api/stocks/search?q=...` (프런트엔드 자동완성이 호출).
+- `backend/routes/keywords.py`의 `create_keyword`는 입력값이 `find_stock_by_code`/`find_stock_by_name`
+  중 하나로 정확히 확인되지 않으면 400을 반환한다 — 이제 "아무 키워드나 등록"은 불가능하다.
+- `backend/services/stock_lookup.py` — 개별 종목의 실시간 정보:
   - `get_stock_snapshot(code)` — `polling.finance.naver.com/api/realtime/domestic/stock/{code}`에서
-    현재가/전일대비/등락률/시장상태를 가져온다. 프런트엔드 CORS 문제를 피하려고 백엔드에서 프록시한다
-    (`GET /api/keywords/{id}/stock`).
+    현재가/전일대비/등락률/시장상태. 프런트엔드 CORS를 피하려고 백엔드가 프록시한다
+    (`GET /api/keywords/{id}/stock`, 대시보드의 "지금 업데이트" 버튼을 눌러도 이 패널이 다시 조회된다).
   - `chart_image_url(code)` — `ssl.pstatic.net/imgfinance/chart/item/area/day/{code}.png`.
     **주의**: `ssl.pstatic.net/imgstock/chart3/day/{code}.png` (레거시 경로로 추정)는 200을 반환하지만
-    실시간 시세와 축 스케일이 전혀 맞지 않는 기사를 반환했다 (실제 확인: 삼성전자 스냅샷은 26만원대인데
-    이 경로의 차트는 115만원대 축을 그림). 반드시 `imgfinance/chart/item/area/day` 경로를 써야 한다 —
-    이 값은 `finance.naver.com/item/main.naver?code=...` 페이지가 실제로 쓰는 이미지 URL을 직접 확인해서
-    검증한 것이다.
-- 종목코드 조회는 키워드 등록 시 한 번만 시도한다 (실패해도 뉴스 키워드 등록 자체는 계속 진행).
-  기존에 종목 연결 없이 등록된 키워드에 나중에 연결하려면 삭제 후 재등록해야 한다 (자동 백필 없음).
-- 프런트엔드(`frontend/app.js`의 `loadStockPanel`)는 선택된 키워드에 `stock_code`가 있을 때만
-  `#stock-panel`을 표시한다.
+    실시간 시세와 축 스케일이 전혀 맞지 않는 차트를 반환했다 (실제 확인: 삼성전자 스냅샷 26만원대인데
+    이 경로의 차트는 115만원대 축을 그림). 반드시 `imgfinance/chart/item/area/day` 경로를 써야 한다.
+  - `item_page_url(code)` — `finance.naver.com/item/main.naver?code={code}`. 대시보드의 차트 이미지를
+    누르면 이 주소로 새 탭이 열린다.
+- 프런트엔드(`frontend/app.js`): `#new-keyword-input`에 타이핑하면 200ms 디바운스 후
+  `/api/stocks/search`를 호출해 `#stock-suggestions` 드롭다운을 채운다 (`searchStockSuggestions`,
+  `renderStockSuggestions`, `selectStockSuggestion`). 선택된 키워드에 `stock_code`가 있을 때만
+  `loadStockPanel`이 `#stock-panel`을 표시한다.
 
 ## 훅/게이트 동작 방식 요약
 `.claude/settings.json`의 `PostToolUse` 훅이 Edit/Write/MultiEdit마다

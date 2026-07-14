@@ -24,6 +24,7 @@ class StockSnapshot(BaseModel):
     direction: str | None
     market_status: str | None
     chart_url: str
+    item_page_url: str
 
 
 class Article(BaseModel):

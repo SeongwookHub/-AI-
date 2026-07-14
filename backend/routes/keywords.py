@@ -1,14 +1,19 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.models.schemas import Keyword, KeywordCreate, StockSnapshot
 from backend.services import pipeline_state, storage
 from backend.services.auth import require_auth
-from backend.services.stock_lookup import chart_image_url, get_stock_snapshot, resolve_stock_code
+from backend.services.stock_lookup import chart_image_url, get_stock_snapshot, item_page_url
+from backend.services.stock_universe import find_stock_by_code, find_stock_by_name
 from backend.services.validators import validate_keyword_input
 
 router = APIRouter(
     prefix="/api/keywords", tags=["keywords"], dependencies=[Depends(require_auth)]
 )
+
+_CODE_RE = re.compile(r"\d{6}")
 
 
 @router.get("", response_model=list[Keyword])
@@ -18,24 +23,23 @@ def get_keywords():
 
 @router.post("", response_model=Keyword, status_code=201)
 def create_keyword(payload: KeywordCreate):
+    query = payload.keyword.strip()
+
+    stock = find_stock_by_code(query) if _CODE_RE.fullmatch(query) else find_stock_by_name(query)
+    if not stock:
+        raise HTTPException(
+            status_code=400,
+            detail="코스피/코스닥에 상장된 종목명 또는 종목코드만 등록할 수 있습니다.",
+        )
+
     existing = [k["keyword"] for k in storage.list_keywords()]
-    ok, error = validate_keyword_input(payload.keyword, existing)
-    pipeline_state.record_step(
-        "keyword-validated", "pass" if ok else "fail", data=payload.keyword
-    )
+    ok, error = validate_keyword_input(stock["name"], existing)
+    pipeline_state.record_step("keyword-validated", "pass" if ok else "fail", data=stock["name"])
     if not ok:
         raise HTTPException(status_code=400, detail=error)
 
-    keyword = payload.keyword.strip()
-    # 종목명이면 네이버 증권 종목코드를 함께 저장해 차트를 보여줄 수 있게 한다.
-    # 조회 실패해도(네트워크 오류, 일반 키워드 등) 뉴스 키워드 등록 자체는 계속 진행한다.
-    stock = resolve_stock_code(keyword)
-    storage.add_keyword(
-        keyword,
-        stock_code=stock["code"] if stock else None,
-        stock_name=stock["name"] if stock else None,
-    )
-    created = next(k for k in storage.list_keywords() if k["keyword"] == keyword)
+    storage.add_keyword(stock["name"], stock_code=stock["code"], stock_name=stock["name"])
+    created = next(k for k in storage.list_keywords() if k["keyword"] == stock["name"])
     return created
 
 
@@ -56,4 +60,8 @@ def get_stock(keyword_id: int):
     if not snapshot:
         raise HTTPException(status_code=502, detail="네이버 증권 시세 조회에 실패했습니다.")
 
-    return {**snapshot, "chart_url": chart_image_url(keyword["stock_code"])}
+    return {
+        **snapshot,
+        "chart_url": chart_image_url(keyword["stock_code"]),
+        "item_page_url": item_page_url(keyword["stock_code"]),
+    }

@@ -3,10 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>네이버 뉴스 키워드 대시보드</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>주식 뉴스 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -21,9 +19,12 @@
 
   <div class="layout">
     <aside class="sidebar">
-      <h2>키워드 관리</h2>
-      <form id="add-keyword-form">
-        <input type="text" id="new-keyword-input" placeholder="신규 키워드" autocomplete="off" />
+      <h2>관심 종목</h2>
+      <form id="add-keyword-form" autocomplete="off">
+        <div class="search-box">
+          <input type="text" id="new-keyword-input" placeholder="종목명 또는 종목코드 검색" autocomplete="off" />
+          <ul id="stock-suggestions" class="suggestions" hidden></ul>
+        </div>
         <button type="submit">추가</button>
       </form>
       <p id="keyword-error" class="error"></p>
@@ -32,7 +33,7 @@
 
     <main class="content">
       <header class="content-header">
-        <h1>📰 네이버 뉴스 키워드 대시보드</h1>
+        <h1>📈 주식 뉴스 대시보드</h1>
         <div class="sync-bar">
           <button id="sync-button">🔄 지금 업데이트</button>
           <span id="last-sync" class="muted"></span>

@@ -1,6 +1,7 @@
 const state = {
   keywords: [],
   selectedKeywordId: null,
+  suggestions: [],
 };
 
 async function api(path, options) {
@@ -140,7 +141,9 @@ async function loadStockPanel() {
     const sign = stock.direction === "RISING" ? "+" : stock.direction === "FALLING" ? "-" : "";
     const displayName = selected.stock_name || selected.keyword;
     panel.innerHTML = `
-      <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트" />
+      <a href="${stock.item_page_url}" target="_blank" rel="noopener noreferrer" class="stock-chart-link">
+        <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트 (네이버 증권에서 크게 보기)" />
+      </a>
       <div class="stock-info">
         <span class="stock-name">${escapeHtml(displayName)} (${escapeHtml(selected.stock_code)})</span>
         <span class="stock-price">${escapeHtml(stock.price || "-")}원</span>
@@ -239,6 +242,56 @@ function renderArticles(articles) {
   }
 }
 
+function debounce(fn, delayMs) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delayMs);
+  };
+}
+
+async function searchStockSuggestions(query) {
+  const list = document.getElementById("stock-suggestions");
+  if (!query.trim()) {
+    state.suggestions = [];
+    list.hidden = true;
+    list.innerHTML = "";
+    return;
+  }
+
+  try {
+    state.suggestions = await api(`/api/stocks/search?q=${encodeURIComponent(query)}`);
+  } catch (e) {
+    state.suggestions = [];
+  }
+  renderStockSuggestions();
+}
+
+function renderStockSuggestions() {
+  const list = document.getElementById("stock-suggestions");
+  list.innerHTML = "";
+
+  if (state.suggestions.length === 0) {
+    list.hidden = true;
+    return;
+  }
+
+  for (const item of state.suggestions) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="suggestion-name">${escapeHtml(item.name)}</span>
+      <span class="suggestion-meta">${escapeHtml(item.code)} · ${escapeHtml(item.market)}</span>`;
+    li.onclick = () => selectStockSuggestion(item);
+    list.appendChild(li);
+  }
+  list.hidden = false;
+}
+
+function selectStockSuggestion(item) {
+  document.getElementById("new-keyword-input").value = item.name;
+  state.suggestions = [];
+  document.getElementById("stock-suggestions").hidden = true;
+}
+
 async function addKeyword(event) {
   event.preventDefault();
   const input = document.getElementById("new-keyword-input");
@@ -251,6 +304,7 @@ async function addKeyword(event) {
       body: JSON.stringify({ keyword: input.value }),
     });
     input.value = "";
+    document.getElementById("stock-suggestions").hidden = true;
     await loadKeywords();
   } catch (e) {
     errorEl.textContent = e.message;
@@ -285,6 +339,7 @@ async function triggerSync() {
     }
     messageEl.textContent = message;
     await loadLastSync();
+    await loadStockPanel();
     await loadArticles();
   } catch (e) {
     messageEl.textContent = `업데이트 실패: ${e.message}`;
@@ -310,5 +365,17 @@ function escapeHtml(str) {
 document.getElementById("add-keyword-form").addEventListener("submit", addKeyword);
 document.getElementById("sync-button").addEventListener("click", triggerSync);
 document.getElementById("login-form").addEventListener("submit", submitLogin);
+
+const debouncedSearch = debounce((value) => searchStockSuggestions(value), 200);
+document.getElementById("new-keyword-input").addEventListener("input", (event) => {
+  debouncedSearch(event.target.value);
+});
+
+document.addEventListener("click", (event) => {
+  const searchBox = document.querySelector(".search-box");
+  if (searchBox && !searchBox.contains(event.target)) {
+    document.getElementById("stock-suggestions").hidden = true;
+  }
+});
 
 checkAuthAndInit();
