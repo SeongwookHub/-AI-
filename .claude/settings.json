@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/schema-validator/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/gate_dispatch.py"
+          }
+        ]
+      }
+    ]
+  }
+}

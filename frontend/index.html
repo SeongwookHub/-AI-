@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>네이버 뉴스 키워드 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="login-overlay" class="login-overlay" hidden>
+    <form id="login-form" class="login-box">
+      <h2>🔒 비밀번호 입력</h2>
+      <input type="password" id="login-password" placeholder="비밀번호" autocomplete="current-password" autofocus />
+      <button type="submit">입장</button>
+      <p id="login-error" class="error"></p>
+    </form>
+  </div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>키워드 관리</h2>
+      <form id="add-keyword-form">
+        <input type="text" id="new-keyword-input" placeholder="신규 키워드" autocomplete="off" />
+        <button type="submit">추가</button>
+      </form>
+      <p id="keyword-error" class="error"></p>
+      <ul id="keyword-list" class="keyword-list"></ul>
+    </aside>
+
+    <main class="content">
+      <header class="content-header">
+        <h1>📰 네이버 뉴스 키워드 대시보드</h1>
+        <div class="sync-bar">
+          <button id="sync-button">🔄 지금 업데이트</button>
+          <span id="last-sync" class="muted"></span>
+        </div>
+        <p id="sync-message"></p>
+      </header>
+
+      <nav id="keyword-tabs" class="tabs"></nav>
+      <section id="article-list" class="article-list"></section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

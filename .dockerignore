@@ -1,0 +1,9 @@
+.git
+.env
+.env.bak
+output/
+.pytest_cache
+__pycache__
+*.pyc
+.venv
+naver-news-dashboard-design.md

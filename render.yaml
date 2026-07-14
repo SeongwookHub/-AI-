@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: naver-news-dashboard
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: news-data
+      mountPath: /data
+      sizeGB: 1
