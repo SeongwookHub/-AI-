@@ -2,9 +2,10 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.models.schemas import Keyword, KeywordCreate, StockSnapshot
+from backend.models.schemas import Keyword, KeywordCreate, ResearchReport, StockSnapshot
 from backend.services import pipeline_state, storage
 from backend.services.auth import require_auth
+from backend.services.research_reports import get_research_reports
 from backend.services.stock_lookup import chart_image_url, get_stock_snapshot, item_page_url
 from backend.services.stock_universe import find_stock_by_code, find_stock_by_name
 from backend.services.validators import validate_keyword_input
@@ -65,3 +66,14 @@ def get_stock(keyword_id: int):
         "chart_url": chart_image_url(keyword["stock_code"]),
         "item_page_url": item_page_url(keyword["stock_code"]),
     }
+
+
+@router.get("/{keyword_id}/reports", response_model=list[ResearchReport])
+def get_reports(keyword_id: int):
+    keyword = storage.get_keyword(keyword_id)
+    if not keyword:
+        raise HTTPException(status_code=404, detail="존재하지 않는 키워드입니다.")
+    if not keyword["stock_code"]:
+        return []
+
+    return get_research_reports(keyword["stock_code"])

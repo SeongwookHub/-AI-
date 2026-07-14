@@ -23,12 +23,25 @@ class StockSnapshot(BaseModel):
     change_ratio: str | None
     direction: str | None
     market_status: str | None
+    market_status_label: str
     open_price: str | None
     high_price: str | None
     low_price: str | None
     volume: str | None
+    nxt_price: str | None
+    nxt_change: str | None
+    nxt_change_ratio: str | None
+    nxt_direction: str | None
     chart_url: str
     item_page_url: str
+
+
+class ResearchReport(BaseModel):
+    title: str
+    broker: str
+    date: str
+    pdf_url: str | None
+    detail_url: str
 
 
 class Article(BaseModel):

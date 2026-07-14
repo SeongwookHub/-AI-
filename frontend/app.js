@@ -121,6 +121,16 @@ function selectKeyword(id) {
   renderTabs();
 }
 
+const STATUS_BADGE_CLASS = { "장중": "status-open", "시간외": "status-after", "장마감": "status-closed" };
+
+function changeSign(direction) {
+  return direction === "RISING" ? "+" : direction === "FALLING" ? "-" : "";
+}
+
+function changeClass(direction) {
+  return direction === "RISING" ? "rising" : direction === "FALLING" ? "falling" : "unchanged";
+}
+
 async function loadStockPanel() {
   const panel = document.getElementById("stock-panel");
   const selected = state.keywords.find((kw) => kw.id === state.selectedKeywordId);
@@ -136,28 +146,69 @@ async function loadStockPanel() {
 
   try {
     const stock = await api(`/api/keywords/${selected.id}/stock`);
-    const directionClass =
-      stock.direction === "RISING" ? "rising" : stock.direction === "FALLING" ? "falling" : "unchanged";
-    const sign = stock.direction === "RISING" ? "+" : stock.direction === "FALLING" ? "-" : "";
     const displayName = selected.stock_name || selected.keyword;
+    const statusClass = STATUS_BADGE_CLASS[stock.market_status_label] || "status-closed";
+
+    const nxtBadge = stock.nxt_price
+      ? `<span class="badge venue-badge venue-nxt">NXT ${escapeHtml(stock.nxt_price)}원 ${changeSign(stock.nxt_direction)}${escapeHtml(stock.nxt_change_ratio || "-")}%</span>`
+      : "";
+
     panel.innerHTML = `
-      <a href="${stock.item_page_url}" target="_blank" rel="noopener noreferrer" class="stock-chart-link">
-        <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트 (네이버 증권에서 크게 보기)" />
-      </a>
-      <div class="stock-info">
-        <span class="stock-name">${escapeHtml(displayName)} (${escapeHtml(selected.stock_code)})</span>
-        <span class="stock-price">${escapeHtml(stock.price || "-")}원</span>
-        <span class="stock-change ${directionClass}">${sign}${escapeHtml(stock.change || "-")} (${escapeHtml(stock.change_ratio || "-")}%)</span>
+      <div class="stock-panel-left">
+        <a href="${stock.item_page_url}" target="_blank" rel="noopener noreferrer" class="stock-chart-link">
+          <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트 (네이버 증권에서 크게 보기)" />
+        </a>
+        <div class="stock-info">
+          <span class="stock-name">${escapeHtml(displayName)} (${escapeHtml(selected.stock_code)})</span>
+          <div class="market-badges">
+            <span class="badge status-badge ${statusClass}">${escapeHtml(stock.market_status_label)}</span>
+            <span class="badge venue-badge venue-krx">KRX ${escapeHtml(stock.price || "-")}원 ${changeSign(stock.direction)}${escapeHtml(stock.change_ratio || "-")}%</span>
+            ${nxtBadge}
+          </div>
+          <span class="stock-price">${escapeHtml(stock.price || "-")}원</span>
+          <span class="stock-change ${changeClass(stock.direction)}">${changeSign(stock.direction)}${escapeHtml(stock.change || "-")} (${escapeHtml(stock.change_ratio || "-")}%)</span>
+        </div>
+        <dl class="stock-stats">
+          <div><dt>시가</dt><dd>${escapeHtml(stock.open_price || "-")}</dd></div>
+          <div><dt>고가</dt><dd>${escapeHtml(stock.high_price || "-")}</dd></div>
+          <div><dt>저가</dt><dd>${escapeHtml(stock.low_price || "-")}</dd></div>
+          <div><dt>거래량</dt><dd>${escapeHtml(stock.volume || "-")}</dd></div>
+        </dl>
       </div>
-      <dl class="stock-stats">
-        <div><dt>시가</dt><dd>${escapeHtml(stock.open_price || "-")}</dd></div>
-        <div><dt>고가</dt><dd>${escapeHtml(stock.high_price || "-")}</dd></div>
-        <div><dt>저가</dt><dd>${escapeHtml(stock.low_price || "-")}</dd></div>
-        <div><dt>거래량</dt><dd>${escapeHtml(stock.volume || "-")}</dd></div>
-      </dl>
+      <div class="stock-panel-right">
+        <h3 class="reports-title">증권사 리포트</h3>
+        <ul id="report-list" class="report-list"><li class="muted">불러오는 중...</li></ul>
+      </div>
     `;
   } catch (e) {
     panel.innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
+    return;
+  }
+
+  loadResearchReports(selected.id);
+}
+
+async function loadResearchReports(keywordId) {
+  const list = document.getElementById("report-list");
+  if (!list) return;
+
+  try {
+    const reports = await api(`/api/keywords/${keywordId}/reports`);
+    list.innerHTML = "";
+    if (reports.length === 0) {
+      list.innerHTML = '<li class="muted">최근 리포트가 없습니다.</li>';
+      return;
+    }
+    for (const r of reports) {
+      const li = document.createElement("li");
+      const titleHtml = r.pdf_url
+        ? `<a href="${r.pdf_url}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a>`
+        : `<a href="${r.detail_url}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a>`;
+      li.innerHTML = `${titleHtml}<span class="report-meta">${escapeHtml(r.broker)} · ${escapeHtml(r.date)}</span>`;
+      list.appendChild(li);
+    }
+  } catch (e) {
+    list.innerHTML = `<li class="error">${escapeHtml(e.message)}</li>`;
   }
 }
 

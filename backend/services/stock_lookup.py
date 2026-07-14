@@ -23,17 +23,37 @@ def get_stock_snapshot(code: str) -> dict | None:
         return None
 
     item = datas[0]
+    market_status = item.get("marketStatus")
+    over_market = item.get("overMarketPriceInfo") or {}
+    over_status = over_market.get("overMarketStatus")
+
     return {
+        # KRX(정규장) 시세 - 기존 필드, 이름 유지(프런트 하위호환)
         "price": item.get("closePrice"),
         "change": item.get("compareToPreviousClosePrice"),
         "change_ratio": item.get("fluctuationsRatio"),
         "direction": item.get("compareToPreviousPrice", {}).get("name"),  # RISING/FALLING/UNCHANGED
-        "market_status": item.get("marketStatus"),
+        "market_status": market_status,
         "open_price": item.get("openPrice"),
         "high_price": item.get("highPrice"),
         "low_price": item.get("lowPrice"),
         "volume": item.get("accumulatedTradingVolume"),
+        # NXT(넥스트레이드) 시세 - overMarketPriceInfo가 없으면 전부 None
+        "nxt_price": over_market.get("overPrice"),
+        "nxt_change": over_market.get("compareToPreviousClosePrice"),
+        "nxt_change_ratio": over_market.get("fluctuationsRatio"),
+        "nxt_direction": over_market.get("compareToPreviousPrice", {}).get("name"),
+        "market_status_label": _market_status_label(market_status, over_status),
     }
+
+
+def _market_status_label(market_status: str | None, over_status: str | None) -> str:
+    """장중/시간외/장마감 중 하나로 사람이 읽기 쉬운 상태 라벨을 계산한다."""
+    if market_status == "OPEN":
+        return "장중"
+    if over_status == "OPEN":
+        return "시간외"
+    return "장마감"
 
 
 def chart_image_url(code: str) -> str:
