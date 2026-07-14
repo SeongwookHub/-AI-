@@ -94,14 +94,14 @@ body {
 
 #add-keyword-form {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
 }
 
 .search-box {
   position: relative;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 #new-keyword-input {
@@ -115,8 +115,22 @@ body {
   font-size: 14px;
 }
 
-#add-keyword-form button {
-  flex-shrink: 0;
+.search-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.search-actions button {
+  flex: 1;
+}
+
+.search-actions .secondary-btn {
+  background: var(--surface-card);
+  color: var(--body);
+}
+
+.search-actions .secondary-btn:hover {
+  background: var(--secondary-bg);
 }
 
 #new-keyword-input:focus {

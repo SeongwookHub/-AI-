@@ -242,14 +242,6 @@ function renderArticles(articles) {
   }
 }
 
-function debounce(fn, delayMs) {
-  let timer = null;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delayMs);
-  };
-}
-
 async function searchStockSuggestions(query) {
   const list = document.getElementById("stock-suggestions");
   if (!query.trim()) {
@@ -292,11 +284,15 @@ function selectStockSuggestion(item) {
   document.getElementById("stock-suggestions").hidden = true;
 }
 
-async function addKeyword(event) {
-  event.preventDefault();
+async function addKeyword() {
   const input = document.getElementById("new-keyword-input");
   const errorEl = document.getElementById("keyword-error");
   errorEl.textContent = "";
+
+  if (!input.value.trim()) {
+    errorEl.textContent = "종목명 또는 종목코드를 입력하세요.";
+    return;
+  }
 
   try {
     await api("/api/keywords", {
@@ -362,13 +358,18 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-document.getElementById("add-keyword-form").addEventListener("submit", addKeyword);
+document.getElementById("search-button").addEventListener("click", () => {
+  searchStockSuggestions(document.getElementById("new-keyword-input").value);
+});
+document.getElementById("add-button").addEventListener("click", addKeyword);
 document.getElementById("sync-button").addEventListener("click", triggerSync);
 document.getElementById("login-form").addEventListener("submit", submitLogin);
 
-const debouncedSearch = debounce((value) => searchStockSuggestions(value), 200);
-document.getElementById("new-keyword-input").addEventListener("input", (event) => {
-  debouncedSearch(event.target.value);
+document.getElementById("new-keyword-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    searchStockSuggestions(event.target.value);
+  }
 });
 
 document.addEventListener("click", (event) => {
