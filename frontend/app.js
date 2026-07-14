@@ -149,6 +149,12 @@ async function loadStockPanel() {
         <span class="stock-price">${escapeHtml(stock.price || "-")}원</span>
         <span class="stock-change ${directionClass}">${sign}${escapeHtml(stock.change || "-")} (${escapeHtml(stock.change_ratio || "-")}%)</span>
       </div>
+      <dl class="stock-stats">
+        <div><dt>시가</dt><dd>${escapeHtml(stock.open_price || "-")}</dd></div>
+        <div><dt>고가</dt><dd>${escapeHtml(stock.high_price || "-")}</dd></div>
+        <div><dt>저가</dt><dd>${escapeHtml(stock.low_price || "-")}</dd></div>
+        <div><dt>거래량</dt><dd>${escapeHtml(stock.volume || "-")}</dd></div>
+      </dl>
     `;
   } catch (e) {
     panel.innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
@@ -204,6 +210,17 @@ function formatTime(pubDate) {
   return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightKeyword(text, keyword) {
+  const escapedText = escapeHtml(text);
+  const escapedKeyword = keyword ? escapeRegExp(escapeHtml(keyword)) : "";
+  if (!escapedKeyword) return escapedText;
+  return escapedText.replace(new RegExp(escapedKeyword, "gi"), (m) => `<mark class="kw-highlight">${m}</mark>`);
+}
+
 function renderArticles(articles) {
   const container = document.getElementById("article-list");
   container.innerHTML = "";
@@ -212,10 +229,11 @@ function renderArticles(articles) {
     return;
   }
 
+  const selected = state.keywords.find((kw) => kw.id === state.selectedKeywordId);
+  const keywordText = selected ? selected.stock_name || selected.keyword : "";
+
   const buckets = groupArticlesByRecency(articles);
   for (const [label, bucketArticles] of buckets) {
-    if (bucketArticles.length === 0) continue;
-
     const timeSection = document.createElement("section");
     timeSection.className = "time-block";
 
@@ -224,19 +242,21 @@ function renderArticles(articles) {
     timeTitle.innerHTML = `${label} <span class="count">${bucketArticles.length}건</span>`;
     timeSection.appendChild(timeTitle);
 
-    const grid = document.createElement("div");
-    grid.className = "card-grid";
-    for (const a of bucketArticles) {
-      const card = document.createElement("article");
-      card.className = "card";
-      card.innerHTML = `
-        <a href="${a.link}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.title)}</a>
-        <p class="desc">${escapeHtml(a.description || "")}</p>
-        <p class="meta">${formatTime(a.pub_date)}</p>
-      `;
-      grid.appendChild(card);
+    if (bucketArticles.length > 0) {
+      const grid = document.createElement("div");
+      grid.className = "card-grid";
+      for (const a of bucketArticles) {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <a href="${a.link}" target="_blank" rel="noopener noreferrer">${highlightKeyword(a.title, keywordText)}</a>
+          <p class="desc">${highlightKeyword(a.description || "", keywordText)}</p>
+          <p class="meta">${formatTime(a.pub_date)}</p>
+        `;
+        grid.appendChild(card);
+      }
+      timeSection.appendChild(grid);
     }
-    timeSection.appendChild(grid);
 
     container.appendChild(timeSection);
   }
@@ -300,11 +320,13 @@ async function addStock(item) {
   errorEl.textContent = "";
 
   try {
-    await api("/api/keywords", {
+    const created = await api("/api/keywords", {
       method: "POST",
       body: JSON.stringify({ keyword: item.code }),
     });
+    state.selectedKeywordId = created.id;
     await loadKeywords();
+    await triggerSync(); // 추가하자마자 바로 관련 뉴스를 가져온다
   } catch (e) {
     errorEl.textContent = e.message;
   }
@@ -347,11 +369,21 @@ async function triggerSync() {
   }
 }
 
+function formatDateTime(isoString) {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return isoString || "-";
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+}
+
 async function loadLastSync() {
   const status = await api("/api/status");
   const el = document.getElementById("last-sync");
   el.textContent = status.last_sync_at
-    ? `마지막 업데이트: ${status.last_sync_at}`
+    ? `마지막 업데이트: ${formatDateTime(status.last_sync_at)}`
     : "아직 업데이트된 적이 없습니다.";
 }
 

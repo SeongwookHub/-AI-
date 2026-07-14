@@ -10,6 +10,10 @@ SNAPSHOT_RESPONSE = {
             "fluctuationsRatio": "3.34",
             "compareToPreviousPrice": {"name": "RISING"},
             "marketStatus": "OPEN",
+            "openPrice": "255,000",
+            "highPrice": "270,000",
+            "lowPrice": "247,000",
+            "accumulatedTradingVolume": "35,054,797",
         }
     ]
 }
@@ -35,6 +39,10 @@ def test_get_stock_snapshot_parses_fields():
         "change_ratio": "3.34",
         "direction": "RISING",
         "market_status": "OPEN",
+        "open_price": "255,000",
+        "high_price": "270,000",
+        "low_price": "247,000",
+        "volume": "35,054,797",
     }
 
 

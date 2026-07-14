@@ -23,6 +23,10 @@ class StockSnapshot(BaseModel):
     change_ratio: str | None
     direction: str | None
     market_status: str | None
+    open_price: str | None
+    high_price: str | None
+    low_price: str | None
+    volume: str | None
     chart_url: str
     item_page_url: str
 

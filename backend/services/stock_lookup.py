@@ -29,6 +29,10 @@ def get_stock_snapshot(code: str) -> dict | None:
         "change_ratio": item.get("fluctuationsRatio"),
         "direction": item.get("compareToPreviousPrice", {}).get("name"),  # RISING/FALLING/UNCHANGED
         "market_status": item.get("marketStatus"),
+        "open_price": item.get("openPrice"),
+        "high_price": item.get("highPrice"),
+        "low_price": item.get("lowPrice"),
+        "volume": item.get("accumulatedTradingVolume"),
     }
 
 
