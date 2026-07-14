@@ -270,37 +270,40 @@ function renderStockSuggestions() {
 
   for (const item of state.suggestions) {
     const li = document.createElement("li");
-    li.innerHTML = `<span class="suggestion-name">${escapeHtml(item.name)}</span>
-      <span class="suggestion-meta">${escapeHtml(item.code)} · ${escapeHtml(item.market)}</span>`;
-    li.onclick = () => selectStockSuggestion(item);
+    li.className = "suggestion-row";
+    li.title = "더블클릭하면 바로 추가됩니다";
+
+    const info = document.createElement("div");
+    info.className = "suggestion-info";
+    info.innerHTML = `<span class="suggestion-name">${escapeHtml(item.name)}</span>
+      <span class="suggestion-code">${escapeHtml(item.code)} · ${escapeHtml(item.market)}</span>`;
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "suggestion-add";
+    addBtn.textContent = "추가";
+    addBtn.onclick = (event) => {
+      event.stopPropagation();
+      addStock(item);
+    };
+
+    li.appendChild(info);
+    li.appendChild(addBtn);
+    li.ondblclick = () => addStock(item);
     list.appendChild(li);
   }
   list.hidden = false;
 }
 
-function selectStockSuggestion(item) {
-  document.getElementById("new-keyword-input").value = item.name;
-  state.suggestions = [];
-  document.getElementById("stock-suggestions").hidden = true;
-}
-
-async function addKeyword() {
-  const input = document.getElementById("new-keyword-input");
+async function addStock(item) {
   const errorEl = document.getElementById("keyword-error");
   errorEl.textContent = "";
-
-  if (!input.value.trim()) {
-    errorEl.textContent = "종목명 또는 종목코드를 입력하세요.";
-    return;
-  }
 
   try {
     await api("/api/keywords", {
       method: "POST",
-      body: JSON.stringify({ keyword: input.value }),
+      body: JSON.stringify({ keyword: item.code }),
     });
-    input.value = "";
-    document.getElementById("stock-suggestions").hidden = true;
     await loadKeywords();
   } catch (e) {
     errorEl.textContent = e.message;
@@ -361,7 +364,6 @@ function escapeHtml(str) {
 document.getElementById("search-button").addEventListener("click", () => {
   searchStockSuggestions(document.getElementById("new-keyword-input").value);
 });
-document.getElementById("add-button").addEventListener("click", addKeyword);
 document.getElementById("sync-button").addEventListener("click", triggerSync);
 document.getElementById("login-form").addEventListener("submit", submitLogin);
 
@@ -373,8 +375,8 @@ document.getElementById("new-keyword-input").addEventListener("keydown", (event)
 });
 
 document.addEventListener("click", (event) => {
-  const searchBox = document.querySelector(".search-box");
-  if (searchBox && !searchBox.contains(event.target)) {
+  const searchForm = document.getElementById("add-keyword-form");
+  if (searchForm && !searchForm.contains(event.target)) {
     document.getElementById("stock-suggestions").hidden = true;
   }
 });

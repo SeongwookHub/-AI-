@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Edit(/.claude/skills/schema-validator/**)"
+      "Edit(/.claude/skills/schema-validator/**)",
+      "Bash(python \"/c/Users/wh981/AppData/Local/Temp/claude/c--Users-wh981-OneDrive-Desktop-Claude-code--------/eb6af920-c98d-4500-8809-c0c21d23f7f2/scratchpad/newux_check2.py\")",
+      "Bash(python -c ' *)"
     ]
   },
   "hooks": {

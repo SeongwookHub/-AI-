@@ -20,17 +20,14 @@
   <div class="layout">
     <aside class="sidebar">
       <h2>관심 종목</h2>
-      <div id="add-keyword-form">
-        <div class="search-box">
-          <input type="text" id="new-keyword-input" placeholder="종목명 또는 종목코드 검색" autocomplete="off" />
-          <ul id="stock-suggestions" class="suggestions" hidden></ul>
-        </div>
-        <div class="search-actions">
-          <button type="button" id="search-button" class="secondary-btn">검색</button>
-          <button type="button" id="add-button">추가</button>
-        </div>
-      </div>
       <p id="keyword-error" class="error"></p>
+      <div id="add-keyword-form">
+        <div class="search-row">
+          <input type="text" id="new-keyword-input" placeholder="종목명 또는 종목코드 검색" autocomplete="off" />
+          <button type="button" id="search-button">검색</button>
+        </div>
+        <ul id="stock-suggestions" class="suggestions" hidden></ul>
+      </div>
       <ul id="keyword-list" class="keyword-list"></ul>
     </aside>
 

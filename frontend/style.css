@@ -93,19 +93,18 @@ body {
 }
 
 #add-keyword-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  position: relative;
   margin-bottom: 12px;
 }
 
-.search-box {
-  position: relative;
-  width: 100%;
+.search-row {
+  display: flex;
+  gap: 8px;
 }
 
 #new-keyword-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 12px 15px;
   border: 1.5px solid var(--hairline);
   border-radius: var(--radius-sm);
@@ -113,24 +112,6 @@ body {
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
-}
-
-.search-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.search-actions button {
-  flex: 1;
-}
-
-.search-actions .secondary-btn {
-  background: var(--surface-card);
-  color: var(--body);
-}
-
-.search-actions .secondary-btn:hover {
-  background: var(--secondary-bg);
 }
 
 #new-keyword-input:focus {
@@ -145,7 +126,7 @@ body {
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  max-height: 280px;
+  max-height: 320px;
   overflow-y: auto;
   margin: 0;
   padding: 6px;
@@ -158,19 +139,26 @@ body {
 
 .suggestions[hidden] { display: none; }
 
-.suggestions li {
+.suggestion-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   padding: 9px 10px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
 }
 
-.suggestions li:hover {
+.suggestion-row:hover {
   background: var(--surface-card);
+}
+
+.suggestion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .suggestion-name {
@@ -178,10 +166,18 @@ body {
   color: var(--text);
 }
 
-.suggestion-meta {
+.suggestion-code {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--mute);
+}
+
+.suggestion-add {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
 }
 
 button {
