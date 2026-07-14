@@ -70,11 +70,33 @@ output/
 - 엔드포인트: `GET https://openapi.naver.com/v1/search/news.json` (`sort=date`, `display<=100`).
 
 ## 데이터 스키마
-- `keywords`: `id, keyword(UNIQUE), created_at`
+- `keywords`: `id, keyword(UNIQUE), created_at, stock_code, stock_name` (뒤 두 컬럼은 nullable — 종목이
+  아닌 일반 키워드는 항상 NULL. 스키마 변경 후 기존 DB에도 `storage._migrate()`가 컬럼을 추가한다)
 - `articles`: `id, link(UNIQUE), title, description, pub_date, synced_at`
 - `article_keywords`: `article_id, keyword_id` (다대다, `link` 기준 upsert 시 합집합으로 병합)
 - `meta`: `key, value` (예: `last_sync_at`)
 - 상세 CRUD는 `backend/services/storage.py` 참고.
+
+## 주식 종목 차트/시세 (키워드가 종목명일 때)
+키워드 추가 시 그 문자열이 네이버 증권에 등록된 종목명과 정확히 일치하면, 종목코드를 함께 저장해
+대시보드에 실시간 차트·시세를 보여준다. 공식 문서화된 API가 아니라 네이버 자체 프런트엔드가 쓰는
+내부 엔드포인트를 그대로 이용하는 것이라 URL이 언제든 바뀔 수 있다.
+- `backend/services/stock_lookup.py`
+  - `resolve_stock_code(query)` — `ac.stock.naver.com/ac` 자동완성 API로 조회, `category=="stock"`이고
+    이름이 **완전히 일치**하는 항목만 채택한다 (ETF 등 이름에 종목명이 포함되기만 한 상품과 혼동 방지).
+  - `get_stock_snapshot(code)` — `polling.finance.naver.com/api/realtime/domestic/stock/{code}`에서
+    현재가/전일대비/등락률/시장상태를 가져온다. 프런트엔드 CORS 문제를 피하려고 백엔드에서 프록시한다
+    (`GET /api/keywords/{id}/stock`).
+  - `chart_image_url(code)` — `ssl.pstatic.net/imgfinance/chart/item/area/day/{code}.png`.
+    **주의**: `ssl.pstatic.net/imgstock/chart3/day/{code}.png` (레거시 경로로 추정)는 200을 반환하지만
+    실시간 시세와 축 스케일이 전혀 맞지 않는 기사를 반환했다 (실제 확인: 삼성전자 스냅샷은 26만원대인데
+    이 경로의 차트는 115만원대 축을 그림). 반드시 `imgfinance/chart/item/area/day` 경로를 써야 한다 —
+    이 값은 `finance.naver.com/item/main.naver?code=...` 페이지가 실제로 쓰는 이미지 URL을 직접 확인해서
+    검증한 것이다.
+- 종목코드 조회는 키워드 등록 시 한 번만 시도한다 (실패해도 뉴스 키워드 등록 자체는 계속 진행).
+  기존에 종목 연결 없이 등록된 키워드에 나중에 연결하려면 삭제 후 재등록해야 한다 (자동 백필 없음).
+- 프런트엔드(`frontend/app.js`의 `loadStockPanel`)는 선택된 키워드에 `stock_code`가 있을 때만
+  `#stock-panel`을 표시한다.
 
 ## 훅/게이트 동작 방식 요약
 `.claude/settings.json`의 `PostToolUse` 훅이 Edit/Write/MultiEdit마다

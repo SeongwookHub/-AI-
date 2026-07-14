@@ -286,6 +286,54 @@ button:active { background: var(--primary-pressed); }
   font-size: 12px;
 }
 
+.stock-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+
+.stock-panel[hidden] {
+  display: none;
+}
+
+.stock-panel img {
+  max-width: 280px;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+}
+
+.stock-panel .stock-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stock-panel .stock-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.stock-panel .stock-price {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.stock-panel .stock-change {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stock-panel .stock-change.rising { color: #d64545; }
+.stock-panel .stock-change.falling { color: #3366cc; }
+.stock-panel .stock-change.unchanged { color: var(--mute); }
+
 .login-overlay {
   position: fixed;
   inset: 0;

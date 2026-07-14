@@ -12,6 +12,41 @@ def test_delete_keyword(temp_storage):
     assert temp_storage.list_keywords() == []
 
 
+def test_add_keyword_with_stock_code(temp_storage):
+    temp_storage.add_keyword("삼성전자", stock_code="005930", stock_name="삼성전자")
+    kw = temp_storage.list_keywords()[0]
+    assert kw["stock_code"] == "005930"
+    assert kw["stock_name"] == "삼성전자"
+
+
+def test_add_keyword_without_stock_code_defaults_to_none(temp_storage):
+    temp_storage.add_keyword("반도체")
+    kw = temp_storage.list_keywords()[0]
+    assert kw["stock_code"] is None
+    assert kw["stock_name"] is None
+
+
+def test_get_keyword_returns_none_for_missing_id(temp_storage):
+    assert temp_storage.get_keyword(999) is None
+
+
+def test_migrate_adds_missing_stock_columns_to_legacy_table(temp_storage):
+    with temp_storage.get_connection() as conn:
+        conn.execute("DROP TABLE keywords")
+        conn.execute(
+            """
+            CREATE TABLE keywords (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                keyword TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+    temp_storage.init_db()  # 마이그레이션이 stock_code/stock_name을 추가해야 함
+    assert temp_storage.add_keyword("삼성전자", stock_code="005930", stock_name="삼성전자")
+    assert temp_storage.list_keywords()[0]["stock_code"] == "005930"
+
+
 def test_upsert_article_new_then_duplicate_link(temp_storage):
     temp_storage.add_keyword("반도체")
     kw_id = temp_storage.list_keywords()[0]["id"]

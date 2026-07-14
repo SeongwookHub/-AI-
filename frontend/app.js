@@ -93,6 +93,9 @@ function renderTabs() {
     state.selectedKeywordId = null;
     document.getElementById("article-list").innerHTML =
       '<p class="muted">키워드를 추가하면 관련 뉴스가 표시됩니다.</p>';
+    const panel = document.getElementById("stock-panel");
+    panel.hidden = true;
+    panel.innerHTML = "";
     return;
   }
 
@@ -108,12 +111,45 @@ function renderTabs() {
     tabs.appendChild(btn);
   }
 
+  loadStockPanel();
   loadArticles();
 }
 
 function selectKeyword(id) {
   state.selectedKeywordId = id;
   renderTabs();
+}
+
+async function loadStockPanel() {
+  const panel = document.getElementById("stock-panel");
+  const selected = state.keywords.find((kw) => kw.id === state.selectedKeywordId);
+
+  if (!selected || !selected.stock_code) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+
+  panel.hidden = false;
+  panel.innerHTML = '<p class="muted">시세 불러오는 중...</p>';
+
+  try {
+    const stock = await api(`/api/keywords/${selected.id}/stock`);
+    const directionClass =
+      stock.direction === "RISING" ? "rising" : stock.direction === "FALLING" ? "falling" : "unchanged";
+    const sign = stock.direction === "RISING" ? "+" : stock.direction === "FALLING" ? "-" : "";
+    const displayName = selected.stock_name || selected.keyword;
+    panel.innerHTML = `
+      <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트" />
+      <div class="stock-info">
+        <span class="stock-name">${escapeHtml(displayName)} (${escapeHtml(selected.stock_code)})</span>
+        <span class="stock-price">${escapeHtml(stock.price || "-")}원</span>
+        <span class="stock-change ${directionClass}">${sign}${escapeHtml(stock.change || "-")} (${escapeHtml(stock.change_ratio || "-")}%)</span>
+      </div>
+    `;
+  } catch (e) {
+    panel.innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
+  }
 }
 
 async function loadArticles() {

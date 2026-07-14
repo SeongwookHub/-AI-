@@ -13,6 +13,17 @@ class Keyword(BaseModel):
     id: int
     keyword: str
     created_at: str
+    stock_code: str | None = None
+    stock_name: str | None = None
+
+
+class StockSnapshot(BaseModel):
+    price: str | None
+    change: str | None
+    change_ratio: str | None
+    direction: str | None
+    market_status: str | None
+    chart_url: str
 
 
 class Article(BaseModel):

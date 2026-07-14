@@ -8,7 +8,9 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS keywords (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     keyword TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    stock_code TEXT,
+    stock_name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS articles (
@@ -46,20 +48,30 @@ def get_connection():
         conn.close()
 
 
+def _migrate(conn: sqlite3.Connection):
+    """SCHEMA에 새 컬럼이 추가된 뒤에도 기존에 생성된 DB 파일이 깨지지 않도록 보정한다."""
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(keywords)")}
+    if "stock_code" not in existing_columns:
+        conn.execute("ALTER TABLE keywords ADD COLUMN stock_code TEXT")
+    if "stock_name" not in existing_columns:
+        conn.execute("ALTER TABLE keywords ADD COLUMN stock_name TEXT")
+
+
 def init_db():
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
 # --- keywords ---
 
-def add_keyword(keyword: str) -> bool:
+def add_keyword(keyword: str, stock_code: str | None = None, stock_name: str | None = None) -> bool:
     """중복이면 False, 신규 등록이면 True."""
     with get_connection() as conn:
         try:
             conn.execute(
-                "INSERT INTO keywords (keyword, created_at) VALUES (?, ?)",
-                (keyword, datetime.now(timezone.utc).isoformat()),
+                "INSERT INTO keywords (keyword, created_at, stock_code, stock_name) VALUES (?, ?, ?, ?)",
+                (keyword, datetime.now(timezone.utc).isoformat(), stock_code, stock_name),
             )
             return True
         except sqlite3.IntegrityError:
@@ -71,10 +83,19 @@ def delete_keyword(keyword_id: int):
         conn.execute("DELETE FROM keywords WHERE id = ?", (keyword_id,))
 
 
+def get_keyword(keyword_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, keyword, created_at, stock_code, stock_name FROM keywords WHERE id = ?",
+            (keyword_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
 def list_keywords() -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT id, keyword, created_at FROM keywords ORDER BY keyword"
+            "SELECT id, keyword, created_at, stock_code, stock_name FROM keywords ORDER BY keyword"
         ).fetchall()
         return [dict(row) for row in rows]
 
