@@ -164,23 +164,39 @@ python -m pytest backend/tests -q
 
 ## 배포 (Render 기준)
 Docker 기반 배포를 전제로 `Dockerfile` / `.dockerignore` / `render.yaml`을 준비해 두었다.
-SQLite를 그대로 쓰므로, 컨테이너가 재시작되어도 데이터가 사라지지 않도록 **영구 디스크가 필수**다.
+**현재 `render.yaml`은 비용을 들이지 않기 위해 `plan: free`, 영구 디스크 없이 구성되어 있다**
+(사용자가 유료 전환을 원하지 않음을 확인함). 이 선택에는 두 가지 트레이드오프가 따른다는 것을
+분명히 알고 있어야 한다:
+- **콜드스타트**: 무료 플랜은 15분 동안 요청이 없으면 서비스가 완전히 잠들고(spin down), 다음 요청이
+  들어와야 컨테이너를 다시 띄운다. 이 과정에 보통 20~50초가 걸리며, 그동안 사용자에게는 Render의
+  "WAKING UP" 로그 화면이 보인다. 자주 안 쓰다가 접속하면 매번 이 지연이 발생하는 것이 정상이다.
+- **데이터 유실**: 무료 플랜은 영구 디스크를 지원하지 않으므로, 컨테이너가 재시작되거나(스핀다운 후
+  재기동 포함) 재배포될 때마다 컨테이너 내부 파일시스템이 초기화된다. 즉 `output/articles.db`
+  (키워드·기사 데이터), `output/_raw/`(원시 응답 아카이브), `output/.session_secret`이 전부 날아갈 수
+  있다. 이는 일회성 위험이 아니라 **이 배포 방식을 유지하는 한 상시로 감수해야 하는 제약**이다.
 
 1. 이 저장소를 GitHub에 올린다 (`git init` 및 최초 커밋은 이미 되어 있음 — `git remote add origin ...` 후 `git push`만 하면 됨).
 2. [Render 대시보드](https://dashboard.render.com)에서 "New +" → "Blueprint"로 위 GitHub 저장소를 연결하면
-   `render.yaml`을 읽어 웹 서비스 + 1GB 영구 디스크(`/data`)를 자동으로 구성한다.
-   (`render.yaml`의 `plan: starter`는 Render의 유료 최저 플랜이다 — 무료 플랜은 영구 디스크를 지원하지 않는다.)
+   `render.yaml`을 읽어 무료 웹 서비스로 구성한다 (영구 디스크는 만들어지지 않는다).
 3. Render 대시보드의 Environment 탭에서 아래 값을 채운다 (`render.yaml`에는 `sync: false`로 되어 있어
    저장소에는 값이 들어가지 않고, 배포 시 대시보드에서 직접 입력해야 한다):
    - `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` — 네이버 개발자센터에서 발급받은 값
    - `APP_PASSWORD` — 대시보드 접속 비밀번호
-   - `SESSION_SECRET` — `python -c "import secrets; print(secrets.token_hex(32))"`로 생성한 임의의 긴 문자열
+   - `SESSION_SECRET` — `python -c "import secrets; print(secrets.token_hex(32))"`로 생성한 임의의 긴 문자열.
+     **영구 디스크가 없는 지금 구성에서는 이 값을 반드시 고정해야 한다** — 설정하지 않으면
+     `output/.session_secret`이 컨테이너 안에만 존재하다가 재배포/재시작마다 사라져서, 매번 새 값이
+     생성되고 기존 로그인 세션이 전부 풀린다.
 4. 배포가 끝나면 Render가 제공하는 `https://<서비스명>.onrender.com` 주소로 접속해 비밀번호 게이트가
    뜨는지, 로그인 후 정상 동작하는지 확인한다.
 5. 자동 스케줄 동기화가 필요하면, Render의 "Cron Job" 리소스를 추가로 만들어
    `curl -X POST https://<서비스명>.onrender.com/api/sync -H "Cookie: session_token=<유효한 토큰>"`
    형태로 호출하거나, 더 간단히는 배포된 서비스에 매일 접속해 "지금 업데이트" 버튼을 누르는 방식으로 운용한다
    (설계서 범위상 자동 스케줄링은 필수 기능이 아니다).
+
+**데이터 유실이 신경 쓰이면**: `render.yaml`에 `plan: starter` + 1GB 디스크(`/data` 마운트)를 추가하고
+`DATA_DIR=/data` 환경변수를 넣으면 콜드스타트와 데이터 유실을 모두 해결할 수 있다 (이전에 한 번
+검토했던 구성이며, `backend/config.py`가 `DATA_DIR` 환경변수를 읽어 DB 경로를 결정하도록 이미 되어
+있어 코드 변경 없이 바로 적용 가능하다). 다만 Render의 유료 최저 플랜이므로 비용이 발생한다.
 
 다른 플랫폼(Fly.io, Railway 등)도 Dockerfile 기반이라 동일하게 배포 가능하다 — 영구 디스크/볼륨을
 붙이고 위와 같은 환경변수를 설정하면 된다.
