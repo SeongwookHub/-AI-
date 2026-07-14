@@ -76,4 +76,4 @@ def get_reports(keyword_id: int):
     if not keyword["stock_code"]:
         return []
 
-    return get_research_reports(keyword["stock_code"])
+    return get_research_reports(keyword["stock_code"], limit=4)

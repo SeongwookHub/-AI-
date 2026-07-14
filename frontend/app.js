@@ -154,10 +154,10 @@ async function loadStockPanel() {
       : "";
 
     panel.innerHTML = `
-      <div class="stock-panel-left">
-        <a href="${stock.item_page_url}" target="_blank" rel="noopener noreferrer" class="stock-chart-link">
-          <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트 (네이버 증권에서 크게 보기)" />
-        </a>
+      <a href="${stock.item_page_url}" target="_blank" rel="noopener noreferrer" class="stock-chart-link">
+        <img src="${stock.chart_url}" alt="${escapeHtml(displayName)} 차트 (네이버 증권에서 크게 보기)" />
+      </a>
+      <div class="stock-info-col">
         <div class="stock-info">
           <span class="stock-name">${escapeHtml(displayName)} (${escapeHtml(selected.stock_code)})</span>
           <div class="market-badges">
@@ -201,10 +201,19 @@ async function loadResearchReports(keywordId) {
     }
     for (const r of reports) {
       const li = document.createElement("li");
-      const titleHtml = r.pdf_url
-        ? `<a href="${r.pdf_url}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a>`
-        : `<a href="${r.detail_url}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a>`;
-      li.innerHTML = `${titleHtml}<span class="report-meta">${escapeHtml(r.broker)} · ${escapeHtml(r.date)}</span>`;
+      const pdfBtn = r.pdf_url
+        ? `<a href="${r.pdf_url}" target="_blank" rel="noopener noreferrer" class="report-btn">PDF</a>`
+        : "";
+      li.innerHTML = `
+        <div class="report-text">
+          <span class="report-title">${escapeHtml(r.title)}</span>
+          <span class="report-meta">${escapeHtml(r.broker)} · ${escapeHtml(r.date)}</span>
+        </div>
+        <div class="report-actions">
+          <a href="${r.detail_url}" target="_blank" rel="noopener noreferrer" class="report-btn">읽기</a>
+          ${pdfBtn}
+        </div>
+      `;
       list.appendChild(li);
     }
   } catch (e) {
