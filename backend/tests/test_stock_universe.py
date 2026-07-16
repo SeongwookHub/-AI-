@@ -1,4 +1,8 @@
+import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
+
+import requests
 
 from backend.services import stock_universe
 
@@ -78,6 +82,32 @@ def test_find_stock_by_code():
     with patch.object(stock_universe, "get_stock_universe", return_value=FAKE_UNIVERSE):
         assert stock_universe.find_stock_by_code("000660")["name"] == "SK하이닉스"
         assert stock_universe.find_stock_by_code("000000") is None
+
+
+def test_get_stock_universe_falls_back_to_stale_cache_on_fetch_failure(tmp_path, monkeypatch):
+    cache_path = tmp_path / "stock_universe.json"
+    stale_fetched_at = datetime.now(timezone.utc) - timedelta(hours=48)
+    cache_path.write_text(
+        json.dumps({"fetched_at": stale_fetched_at.isoformat(), "stocks": FAKE_UNIVERSE}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(stock_universe, "UNIVERSE_CACHE_PATH", cache_path)
+
+    with patch.object(stock_universe, "build_stock_universe", side_effect=requests.RequestException("boom")):
+        universe = stock_universe.get_stock_universe()
+
+    assert universe == FAKE_UNIVERSE  # 만료된 캐시라도 새로 수집 실패 시 계속 서비스
+
+
+def test_get_stock_universe_raises_when_no_cache_and_fetch_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(stock_universe, "UNIVERSE_CACHE_PATH", tmp_path / "missing.json")
+
+    with patch.object(stock_universe, "build_stock_universe", side_effect=requests.RequestException("boom")):
+        try:
+            stock_universe.get_stock_universe()
+            assert False, "예외가 발생했어야 함"
+        except requests.RequestException:
+            pass
 
 
 def test_build_stock_universe_excludes_etf_and_etn():

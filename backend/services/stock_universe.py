@@ -59,7 +59,7 @@ def build_stock_universe() -> dict[str, dict]:
     return universe
 
 
-def _read_cache() -> dict | None:
+def _read_cache(ignore_age: bool = False) -> dict | None:
     if not UNIVERSE_CACHE_PATH.exists():
         return None
     try:
@@ -67,7 +67,7 @@ def _read_cache() -> dict | None:
         fetched_at = datetime.fromisoformat(payload["fetched_at"])
     except (json.JSONDecodeError, KeyError, ValueError):
         return None
-    if datetime.now(timezone.utc) - fetched_at > CACHE_MAX_AGE:
+    if not ignore_age and datetime.now(timezone.utc) - fetched_at > CACHE_MAX_AGE:
         return None
     return payload["stocks"]
 
@@ -79,12 +79,22 @@ def _write_cache(universe: dict) -> None:
 
 
 def get_stock_universe(force_refresh: bool = False) -> dict[str, dict]:
-    """캐시가 유효하면 캐시를 쓰고, 없거나 오래됐으면(24시간) 새로 수집해 캐시에 저장한다."""
+    """캐시가 유효하면 캐시를 쓰고, 없거나 오래됐으면(24시간) 새로 수집해 캐시에 저장한다.
+
+    네이버 쪽 일시 장애 등으로 재수집(build_stock_universe)이 실패하면, 검색 기능
+    전체가 죽는 대신 기간이 지난 캐시라도 있으면 그걸로 계속 서비스한다.
+    """
     if not force_refresh:
         cached = _read_cache()
         if cached is not None:
             return cached
-    universe = build_stock_universe()
+    try:
+        universe = build_stock_universe()
+    except requests.RequestException:
+        stale = _read_cache(ignore_age=True)
+        if stale is not None:
+            return stale
+        raise
     _write_cache(universe)
     return universe
 
